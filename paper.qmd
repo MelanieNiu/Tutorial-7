@@ -1,0 +1,156 @@
+---
+title: "Navigating Data Integrity: How to Discover Instrumental and Processing Errors in Normal Distribution Analysis"
+author: 
+  - Yuchao Niu
+thanks: "Code and data are available at: https://github.com/MelanieNiu/Tutorial-7"
+date: today
+date-format: long
+format: pdf
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+#set up the work station
+library(tidyverse)
+library(ggplot2)
+
+```
+
+
+The normal distribution, well known by its bell curve shape, is a key concept in statistics. Underpinning a wide array of processes in natural and social sciences, the normal distribution serves as a fundamental tool for modelling. The usefulness of modelling using the normal distribution include predicting outcomes, assessing variability and inferring population characteristics from sample data to name a few. Data analysis involving a data set that is normally distributed is very common. The data analysis process can be more complex than imagined as it starts from phenomena in the world being recorded to cleaned data sets ready for modelling and analysis. The entire process can be challenged by a range of instrumental limitations and human errors. In this paper we explored a handful of hypothetical however realistic situations where errors can occur during the collection and cleaning stages of a dataset that has 1000 observations, with an underlying normal distribution with mean of one, and standard deviation of one. 
+
+First we performed a simulation of 1000 observations obtained from a variable that has normal distribution with mean of one and standard deviation of one. R is used to perform all the following analysis. The package ggplot2 is used to plot the relevant graphs. 
+
+@fig-1
+
+```{r}
+
+#| echo: false
+#| eval: true
+#| message: false
+#| warning: false
+#| label: fig-1
+#| fig-cap: "Histogram of Observations"
+
+original_data <- rnorm(n = 1000, 1, 1)
+original_df <- data.frame(Value = original_data)
+
+
+ggplot(original_df, aes(x = Value)) +
+  geom_histogram(binwidth = 0.2, fill = "blue", color = "black", alpha = 0.4) +
+  labs(title = "Figure 1. Histogram of Observations", x = "Value", y = "Frequency") +
+  theme_minimal()
+
+
+```
+@fig-1 showed the original data and it follows the characteristic bell curve of normal distribution for the 1000 observations. 
+
+#Errors in data collection
+
+However, unknown to the data collectors, the data collection instrument has a mistake in collecting data of this sample size. The maximum memory of the instrument is recording 900 observations, and the instrument begins over-writing after 900 observations, so the final 100 observations are actually a repeat of the first 100. We simulated this instrumental error as follows. 
+
+```{r}
+
+#| echo: false
+#| eval: true
+#| message: false
+#| warning: false
+#| label: fig-2
+#| fig-cap: "Figure 2 Observations after instrumentational errors"
+
+# Instrumental error: overwrite the last 100 observations with the first 100
+original_df_copy <- original_df
+original_df_copy$Value[901:1000] <- original_df_copy$Value[1:100]
+data_mean <- mean(original_df_copy$Value)
+ggplot(original_df_copy, aes(x = Value)) +
+  geom_histogram(binwidth = 0.2, fill = "purple", color = "black", alpha = 0.4) +
+  geom_vline(xintercept = data_mean, color = "red", linetype = "dashed") +
+  labs(title = "Figure 2. Observations ", x = "Value", y = "Frequency") +
+  theme_minimal()
+
+```
+Figure 2 demonstrated that the overwriting of the last 100 observations by the first 100 observations did not visually alter the distribution pattern of the data set and the sample mean represented by the dashed line on the histrogram. 
+
+#Errors in data cleaning
+
+Upon the collection of data, the data set is cleaned and prepared by a research assistant. During the process the research assistant accidentally changed half of the negative draws to be positive without the research team's awareness of it. We simulated the impact of this error on the data set in figure 3. 
+
+```{r}
+#| echo: false
+#| eval: true
+#| message: false
+#| warning: false
+#| label: fig-2
+#| fig-cap: "Figure 3 Observations after instrumentational errors"
+
+# The simulation of the research assistant's mistake: changed half of the negative draws to be positive
+
+# Identify the indices of all negative values in the data frame
+negative_indices <- which(original_df_copy$Value < 0)
+
+# Randomly select half of these indices to change
+set.seed(853) 
+negative_indices_change <- sample(negative_indices, length(negative_indices) / 2)
+
+# Change the selected negative values to positive
+original_df_copy$Value[negative_indices_change] <- abs(original_df_copy$Value[negative_indices_change])
+ggplot(original_df_copy, aes(x = Value)) +
+  geom_histogram(binwidth = 0.2, fill = "green", color = "black", alpha = 0.3) +
+  geom_vline(xintercept = data_mean, color = "red", linetype = "dashed") +
+  labs(title = "Figure 3. Observations ", x = "Value", y = "Frequency") +
+  theme_minimal()
+
+```
+We can see that following this accidental alteration of the data set by the research assistant, the distribution of the data set becomes slightly right skewed although the mean of the data set remains at around 1. 
+
+Another mistakes made by the research assistants during data cleaning is that accidentally they change the decimal place on any value between 1 and 1.1, so that, for instance 1 becomes 0.1, and 1.1 becomes 0.11. We simulated the impact of this alteration to the data set in figure 4.
+
+```{r}
+#| echo: false
+#| eval: true
+#| message: false
+#| warning: false
+
+# The simulation of the research assistant's mistake: decimal places for values between 1 and 1.1 are shifted to the left. 
+
+# Identifying indices of values between 1 and 1.1 (inclusive)
+indices_adjust <- which(original_df_copy$Value >= 1 & original_df_copy$Value <= 1.1)
+
+# Adjusting the decimal place by multiplying these values by 0.1
+original_df_copy$Value[indices_adjust] <- original_df_copy$Value[indices_adjust] * 0.1
+
+ggplot(original_df_copy, aes(x = Value)) +
+  geom_histogram(binwidth = 0.2, fill = "yellow", color = "black", alpha = 0.3) +
+  geom_vline(xintercept = data_mean, color = "red", linetype = "dashed") +
+  labs(title = "Figure 4. Observations ", x = "Value", y = "Frequency") +
+  theme_minimal()
+
+original_df_copy_mean <- round(mean(original_df_copy$Value), 2)
+```
+Figure 4 shows that following this alteration by the research assistants, there is a large decrease of the frequency of the values in the bin around 1. The overall distribution of the data set resembles the normal distribution bell curve less. 
+
+Lastly we are interested in understanding whether the mean of the true data generating process is greater than 0 by analyzing the cleaned albeit altered data set. We found the mean of the data set to be `r original_df_copy_mean`
+
+
+Although several mistakes have happened through this hypothetical data analysis task of a variable with a normal distribution, the final mean of the data set is still estimated to be positive and close to the true population mean. Nevertheless the mistakes that were simulated in this task can readily occur in real life data collection and cleaning processes and can potentially lead to more severely compromised data integrity. Therefore data verification steps ought to be put in place to prevent or limit the occurrences of such mistakes and their impacts.
+
+Possible steps include
+
+
+
+Weaknesses and next steps should also be included.
+
+
+
+
+
+\newpage
+
+
+# References
+
+
